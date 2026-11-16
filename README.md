@@ -5,7 +5,7 @@ Sitio web informativo para una veterinaria, con frontend estático, API en Node.
 ## Inicio rápido
 
 1. Instala Node.js y MySQL. Para usar el asistente también instala [Ollama](https://ollama.com/) y descarga el modelo: `ollama pull gemma3`.
-2. Crea la base de datos ejecutando `backend/database/schema.sql` en MySQL.
+2. Crea o selecciona la base `dbweb` ejecutando `backend/database/schema.sql` en MySQL.
 3. Copia `backend/.env.example` como `backend/.env` y configura tus credenciales.
 4. En `backend/`: `npm install` y `npm run dev`.
 5. Abre `http://localhost:3000`.
