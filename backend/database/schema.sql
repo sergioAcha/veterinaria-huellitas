@@ -1,5 +1,6 @@
-CREATE DATABASE IF NOT EXISTS dbweb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE dbweb;
+-- Base exclusiva de la veterinaria; no modifica bases de otros proyectos.
+CREATE DATABASE IF NOT EXISTS veterinaria_huellitas CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE veterinaria_huellitas;
 
 CREATE TABLE IF NOT EXISTS services (
   id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL, description TEXT NOT NULL,
