@@ -1,5 +1,5 @@
 export const demo = {
-  home: { clinicName: 'Huellitas', tagline: 'Cuidado cercano para quienes más quieres.', headline: 'Su bienestar también es parte de la familia.', subheadline: 'Atención veterinaria con cariño, experiencia y un equipo que escucha.', videoUrl: 'https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4', videoCredit: 'Video de animales en Pexels' },
+  home: { clinicName: 'Huellitas', tagline: 'Cuidado cercano para quienes más quieres.', headline: 'Su bienestar también es parte de la familia.', subheadline: 'Atención veterinaria con cariño, experiencia y un equipo que escucha.', videoUrl: 'https://videos.pexels.com/video-files/6234581/6234581-hd_1920_1080_25fps.mp4', videoCredit: 'Consulta veterinaria · Pexels' },
   services: [
     { id: 1, name: 'Consulta general', description: 'Evaluación completa y orientación para cuidar la salud de tu mascota.', icon: '🩺' },
     { id: 2, name: 'Vacunación', description: 'Plan de vacunas y recordatorios según la edad y necesidades de cada paciente.', icon: '💉' },
