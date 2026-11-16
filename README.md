@@ -9,7 +9,8 @@ Sitio web informativo para una veterinaria, con frontend estático, API en Node.
 3. En otra pestaña de Workbench, crea el usuario local que usará Node (cambia `TU_CLAVE` por una clave propia):
 
    ```sql
-   CREATE USER 'huellitas_app'@'127.0.0.1' IDENTIFIED BY 'TU_CLAVE';
+   CREATE OR REPLACE USER 'huellitas_app'@'127.0.0.1'
+     IDENTIFIED VIA mysql_native_password USING PASSWORD('TU_CLAVE');
    GRANT SELECT, INSERT, UPDATE, DELETE ON veterinaria_huellitas.* TO 'huellitas_app'@'127.0.0.1';
    FLUSH PRIVILEGES;
    ```
