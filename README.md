@@ -1,18 +1,25 @@
-# Café Aroma
+# Veterinaria Huellitas
 
-Sitio web para una cafetería con frontend estático, API en Node.js, MariaDB/MySQL y asistente opcional conectado a Ollama/Gemma 3.
+Sitio web informativo para una veterinaria, con frontend estático, API en Node.js, base MySQL y chatbot conectado a Ollama/Gemma 3.
 
-## Inicio rápido con XAMPP
+## Inicio rápido
 
-1. Inicia **MySQL** desde XAMPP Control Panel. La configuración de ejemplo usa `localhost:3306`.
-2. Ejecuta `backend/database/schema.sql` desde phpMyAdmin. Crea la base independiente `cafeteria_xampp`, sus tablas y el contenido inicial.
-3. Copia `backend/.env.example` como `backend/.env`. Para el XAMPP local predeterminado, `root` suele tener contraseña vacía; ajusta `DB_USER` y `DB_PASSWORD` si configuraste otra.
-4. En `backend/`, ejecuta `npm install` y `npm run dev`.
-5. Abre `http://localhost:3000`.
+1. Instala Node.js y MySQL. Para usar el asistente también instala [Ollama](https://ollama.com/) y descarga el modelo: `ollama pull gemma3`.
+2. Ejecuta `backend/database/schema.sql` en MySQL Workbench. El script crea la base independiente `veterinaria_huellitas` y sus tablas, sin modificar otras bases.
+3. En otra pestaña de Workbench, crea el usuario local que usará Node (cambia `TU_CLAVE` por una clave propia):
 
-La app consulta textos, imágenes (sus URLs), carta, precios e información del negocio en la base. No muestra datos de demostración si falla la conexión: presenta un error. El formulario guarda mensajes en `contacts`. Para usar el chat también se necesita Ollama y el modelo `gemma3`; sus respuestas se basan en datos de la base.
+   ```sql
+   CREATE OR REPLACE USER 'huellitas_app'@'127.0.0.1'
+     IDENTIFIED VIA mysql_native_password USING PASSWORD('TU_CLAVE');
+   GRANT SELECT, INSERT, UPDATE, DELETE ON veterinaria_huellitas.* TO 'huellitas_app'@'127.0.0.1';
+   FLUSH PRIVILEGES;
+   ```
 
-**Seguridad:** usar `root` es solo para desarrollo local con XAMPP. En un entorno compartido o publicado, configura un usuario de aplicación con permisos limitados.
+4. Copia `backend/.env.example` como `backend/.env` y coloca la misma clave en `DB_PASSWORD`.
+5. En `backend/`: `npm install` y `npm run dev`.
+6. Abre `http://localhost:3000`.
+
+El backend sirve también el frontend. El sitio puede mostrar datos de demostración por API cuando MySQL no está disponible; para guardar mensajes de contacto hay que iniciar MySQL.
 
 ## API
 
@@ -21,6 +28,10 @@ La app consulta textos, imágenes (sus URLs), carta, precios e información del 
 - `POST /api/contact` con `{ name, email, phone, subject, message }`
 - `POST /api/chat` con `{ message, history? }`
 
+## GitHub
+
+El repositorio contiene las dos carpetas (`frontend` y `backend`) para compartir el proyecto completo. No se ha creado ni publicado un repositorio remoto: hace falta que el propietario cree/indique el repositorio de GitHub y autorice el envío.
+
 ## Personalización
 
-Edita `site_content`, `cafe_info`, `menu_items`, `cafe_features` y `prices` desde phpMyAdmin. Los mensajes enviados por el formulario se guardan en `contacts`.
+Los datos de demostración, teléfono, dirección, historia y precios se encuentran en `backend/src/data/demo.js`; reemplázalos por los datos reales de la veterinaria. El video de portada enlaza a Pexels y requiere conexión a internet.

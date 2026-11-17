@@ -19,4 +19,4 @@ app.get('*', (_req, res) => res.sendFile(path.join(frontendPath, 'index.html')))
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(port, () => console.log(`Café Aroma listo en http://localhost:${port}`));
+app.listen(port, () => console.log(`Huellitas listo en http://localhost:${port}`));
