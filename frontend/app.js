@@ -1,50 +1,314 @@
 const API = '/api';
-const fallback = {
-  home: { clinicName: 'Huellitas', headline: 'Su bienestar también es parte de la familia.', subheadline: 'Atención veterinaria con cariño, experiencia y un equipo que escucha.', videoUrl: 'https://videos.pexels.com/video-files/6234581/6234581-hd_1920_1080_25fps.mp4' },
-  services: [{ name: 'Consulta general', description: 'Evaluación completa y orientación para cuidar la salud de tu mascota.', icon: '🩺' }, { name: 'Vacunación', description: 'Plan de vacunas y recordatorios según la edad de cada paciente.', icon: '💉' }, { name: 'Desparasitación', description: 'Prevención y tratamiento seguro para perros y gatos.', icon: '🛡️' }, { name: 'Estética y baño', description: 'Baño, corte y cuidado de piel y pelaje.', icon: '🛁' }, { name: 'Laboratorio clínico', description: 'Análisis de apoyo para un diagnóstico oportuno.', icon: '🔬' }, { name: 'Cirugía', description: 'Procedimientos programados con seguimiento veterinario.', icon: '🏥' }],
-  specialties: [{ name: 'Medicina preventiva', description: 'Controles, vacunas y planes de bienestar.', icon: '🌿' }, { name: 'Medicina interna', description: 'Evaluación de enfermedades frecuentes.', icon: '🩺' }, { name: 'Dermatología', description: 'Atención de alergias y problemas de piel.', icon: '🐕' }, { name: 'Odontología', description: 'Cuidado de la salud oral de tu mascota.', icon: '🦷' }],
-  about: { history: 'Somos un equipo dedicado a la salud y bienestar de perros y gatos. Queremos que cada visita sea tranquila, clara y llena de cariño.', address: 'Av. Principal #123, La Paz, Bolivia', phone: '+591 70000000', email: 'hola@huellitas.bo', hours: 'Lunes a sábado · 09:00 a 18:00' },
-  prices: [{ service_name: 'Consulta general', amount: 80, currency: 'Bs', note: 'Precio referencial.' }, { service_name: 'Vacunación', amount: 60, currency: 'Bs', note: 'Desde; depende de la vacuna.' }, { service_name: 'Desparasitación', amount: 35, currency: 'Bs', note: 'Desde; depende del peso.' }, { service_name: 'Baño y estética', amount: 90, currency: 'Bs', note: 'Desde; varía según tamaño.' }, { service_name: 'Control de seguimiento', amount: 50, currency: 'Bs', note: 'Precio referencial.' }]
-};
-async function getData(route, defaultValue) { try { const response = await fetch(`${API}/${route}`); if (!response.ok) throw new Error(); return await response.json(); } catch { return defaultValue; } }
+const CONTENT_REFRESH_MS = 15000;
+
+async function getData(route) {
+  const response = await fetch(`${API}/${route}?t=${Date.now()}`, { cache: 'no-store' });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `No se pudieron cargar los datos (${route}).`);
+  return result;
+}
+
+function setText(selector, value) {
+  document.querySelector(selector).textContent = value || '';
+}
+
 function renderCards(items, target, kind) {
-  document.querySelector(target).innerHTML = items.map((item, index) => kind === 'service'
-    ? `<article class="service-card"><div class="card-top"><span class="card-icon">${item.icon}</span><span class="card-index">0${index + 1}</span></div><h3>${item.name}</h3><p>${item.description}</p><a href="#contacto" aria-label="Consultar por ${item.name}">↗</a></article>`
-    : `<article class="specialty-card"><span class="specialty-icon">${item.icon}</span><div><h3>${item.name}</h3><p>${item.description}</p></div><span class="specialty-arrow">↗</span></article>`).join('');
+  const container = document.querySelector(target);
+  if (!items.length) {
+    const empty = document.createElement('p');
+    empty.textContent = 'No hay información disponible.';
+    container.replaceChildren(empty);
+    return;
+  }
+  const cards = items.map((item, index) => {
+    const card = document.createElement('article');
+    card.className = kind === 'service' ? 'service-card' : 'specialty-card';
+    if (kind === 'service') {
+      const top = document.createElement('div');
+      top.className = 'card-top';
+      const icon = document.createElement('span');
+      icon.className = 'card-icon';
+      icon.textContent = item.icon;
+      const number = document.createElement('span');
+      number.className = 'card-index';
+      number.textContent = String(index + 1).padStart(2, '0');
+      top.append(icon, number);
+      const title = document.createElement('h3');
+      title.textContent = item.name;
+      const description = document.createElement('p');
+      description.textContent = item.description;
+      const link = document.createElement('a');
+      link.href = '#contacto';
+      link.setAttribute('aria-label', `Consultar por ${item.name}`);
+      link.textContent = '↗';
+      card.append(top, title, description, link);
+    } else {
+      const icon = document.createElement('span');
+      icon.className = 'specialty-icon';
+      icon.textContent = item.icon;
+      const details = document.createElement('div');
+      const title = document.createElement('h3');
+      title.textContent = item.name;
+      const description = document.createElement('p');
+      description.textContent = item.description;
+      details.append(title, description);
+      const arrow = document.createElement('span');
+      arrow.className = 'specialty-arrow';
+      arrow.textContent = '↗';
+      card.append(icon, details, arrow);
+    }
+    return card;
+  });
+  container.replaceChildren(...cards);
 }
-function renderPrices(items) { document.querySelector('#prices-list').innerHTML = items.map((item, i) => `<article class="price-row"><span class="price-num">0${i + 1}</span><strong>${item.service_name}</strong><span class="price-note-inline">${item.note || ''}</span><span class="price-amount">${item.currency} ${Number(item.amount).toFixed(0)}</span></article>`).join(''); }
+
+function renderPrices(items) {
+  const list = document.querySelector('#prices-list');
+  if (!items.length) {
+    const empty = document.createElement('p');
+    empty.textContent = 'No hay precios disponibles.';
+    list.replaceChildren(empty);
+    return;
+  }
+  const rows = items.map((item, index) => {
+    const row = document.createElement('article');
+    row.className = 'price-row';
+    const number = document.createElement('span');
+    number.className = 'price-num';
+    number.textContent = String(index + 1).padStart(2, '0');
+    const name = document.createElement('strong');
+    name.textContent = item.service_name;
+    const note = document.createElement('span');
+    note.className = 'price-note-inline';
+    note.textContent = item.note || '';
+    const amount = document.createElement('span');
+    amount.className = 'price-amount';
+    amount.textContent = `${item.currency} ${Number(item.amount).toFixed(0)}`;
+    row.append(number, name, note, amount);
+    return row;
+  });
+  list.replaceChildren(...rows);
+}
+
 function renderContact(info) {
-  document.querySelector('#contact-details').innerHTML = `<div><span>VISÍTANOS</span><strong>${info.address}</strong></div><div><span>LLÁMANOS</span><strong><a href="tel:${info.phone.replace(/[^+\d]/g, '')}">${info.phone}</a></strong></div><div><span>HORARIO</span><strong>${info.hours}</strong></div>`;
+  const details = document.querySelector('#contact-details');
+  const entries = [
+    ['VISÍTANOS', info.address],
+    ['LLÁMANOS', info.phone],
+    ['HORARIO', info.hours],
+    ['CORREO', info.email]
+  ];
+  const elements = entries.map(([label, value]) => {
+    const item = document.createElement('div');
+    const caption = document.createElement('span');
+    caption.textContent = label;
+    const content = document.createElement('strong');
+    if (label === 'LLÁMANOS') {
+      const link = document.createElement('a');
+      link.href = `tel:${value.replace(/[^+\d]/g, '')}`;
+      link.textContent = value;
+      content.append(link);
+    } else if (label === 'CORREO') {
+      const link = document.createElement('a');
+      link.href = `mailto:${value}`;
+      link.textContent = value;
+      content.append(link);
+    } else {
+      content.textContent = value;
+    }
+    item.append(caption, content);
+    return item;
+  });
+  details.replaceChildren(...elements);
 }
-async function init() {
-  const [home, services, specialties, about, prices, contact] = await Promise.all([getData('home', fallback.home), getData('services', fallback.services), getData('specialties', fallback.specialties), getData('about', fallback.about), getData('prices', fallback.prices), getData('contact-info', fallback.about)]);
-  document.querySelector('#hero-title').innerHTML = (home.headline || fallback.home.headline).replace('familia.', '<em>familia.</em>');
-  document.querySelector('#hero-subtitle').textContent = home.subheadline || fallback.home.subheadline;
-  if (home.videoUrl) document.querySelector('#hero-video source').src = home.videoUrl;
-  document.querySelector('#hero-video').load();
-  document.querySelector('#about-history').textContent = about.history;
-  renderCards(services, '#services-grid', 'service'); renderCards(specialties, '#specialties-grid', 'specialty'); renderPrices(prices); renderContact(contact);
+
+function renderHome(home, about) {
+  document.title = `${about.name} | ${about.tagline}`;
+  document.querySelector('#site-description').content = home.hero_subheadline;
+  document.querySelectorAll('.brand-name').forEach((element) => { element.textContent = about.name; });
+  document.querySelectorAll('.brand-tagline').forEach((element) => { element.textContent = about.tagline; });
+  setText('#footer-business-name', about.name);
+  setText('#header-cta-label', home.header_cta);
+  setText('#hero-eyebrow', home.hero_eyebrow);
+  setText('#hero-title', home.hero_headline);
+  setText('#hero-subtitle', home.hero_subheadline);
+  setText('#hero-trust-title', home.hero_trust_title);
+  setText('#hero-trust-text', home.hero_trust_text);
+  setText('#hero-bottom-1', home.hero_bottom_1);
+  setText('#hero-bottom-2', home.hero_bottom_2);
+  setText('#hero-bottom-3', home.hero_bottom_3);
+  const heroImage = document.querySelector('#hero-image');
+  heroImage.src = home.hero_image_url;
+  heroImage.alt = home.hero_image_alt;
+  setText('#hero-caption', home.hero_caption);
+  setText('#welcome-message', home.welcome_message);
+  setText('#welcome-label', home.welcome_label);
+  setText('#menu-eyebrow', home.menu_eyebrow);
+  setText('#menu-heading', home.menu_heading);
+  setText('#menu-description', home.menu_description);
+  setText('#features-eyebrow', home.features_eyebrow);
+  setText('#features-heading', home.features_heading);
+  setText('#features-description', home.features_description);
+  setText('#about-eyebrow', home.about_eyebrow);
+  setText('#about-heading', home.about_heading);
+  const aboutImage = document.querySelector('#about-image');
+  aboutImage.src = home.about_image_url;
+  aboutImage.alt = home.about_image_alt;
+  setText('#about-photo-note', home.about_photo_note);
+  setText('#about-fact-1', home.about_fact_1);
+  setText('#about-fact-2', home.about_fact_2);
+  setText('#about-fact-3', home.about_fact_3);
+  setText('#about-cta', home.about_cta);
+  setText('#prices-eyebrow', home.prices_eyebrow);
+  setText('#prices-heading', home.prices_heading);
+  setText('#prices-description', home.prices_description);
+  setText('#prices-note', home.prices_note);
+  setText('#contact-eyebrow', home.contact_eyebrow);
+  setText('#contact-heading', home.contact_heading);
+  setText('#contact-description', home.contact_description);
+  setText('#footer-note', home.footer_note);
+  setText('#chat-name', `Asistente ${about.name}`);
+  setText('#chat-subtitle', home.chat_subtitle);
+  setText('#chat-greeting', home.chat_greeting);
+  setText('#chat-disclaimer', home.chat_disclaimer);
+}
+
+async function renderContent() {
+  const [home, services, specialties, about, prices, contact] = await Promise.all([
+    getData('home'),
+    getData('services'),
+    getData('specialties'),
+    getData('about'),
+    getData('prices'),
+    getData('contact-info')
+  ]);
+  renderHome(home, about);
+  setText('#about-history', about.history);
+  renderCards(services, '#services-grid', 'service');
+  renderCards(specialties, '#specialties-grid', 'specialty');
+  renderPrices(prices);
+  renderContact(contact);
   document.querySelector('#year').textContent = new Date().getFullYear();
 }
+
+async function init() {
+  try {
+    await renderContent();
+    document.querySelector('#site-loading').hidden = true;
+    document.querySelector('header').hidden = false;
+    document.querySelector('main').hidden = false;
+    document.querySelector('footer').hidden = false;
+    document.querySelector('#chat-toggle').hidden = false;
+    document.querySelector('#site-error').hidden = true;
+  } catch (error) {
+    console.error('No se pudo cargar el contenido desde MySQL:', error);
+    document.querySelector('#site-loading').hidden = true;
+    const message = document.querySelector('#site-error');
+    message.textContent = `No se pudo cargar la información desde la base de datos. ${error.message}`;
+    message.hidden = false;
+  }
+}
+
+let refreshTimer = null;
+function startContentRefresh() {
+  if (refreshTimer) return;
+  refreshTimer = window.setInterval(async () => {
+    try {
+      await renderContent();
+      document.querySelector('#site-error').hidden = true;
+    } catch (error) {
+      console.warn('No se pudo refrescar el contenido desde MySQL:', error);
+    }
+  }, CONTENT_REFRESH_MS);
+}
+
 init();
-const nav = document.querySelector('.nav'), menuToggle = document.querySelector('.menu-toggle');
-menuToggle.addEventListener('click', () => { const open = menuToggle.getAttribute('aria-expanded') !== 'true'; menuToggle.setAttribute('aria-expanded', String(open)); nav.classList.toggle('nav-open', open); });
-nav.addEventListener('click', (event) => { if (event.target.closest('a')) { nav.classList.remove('nav-open'); menuToggle.setAttribute('aria-expanded', 'false'); } });
-document.querySelector('#contact-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); const form = event.currentTarget, status = document.querySelector('#form-status'), button = form.querySelector('button');
-  button.disabled = true; status.textContent = 'Enviando…'; status.className = 'form-status';
-  try { const response = await fetch(`${API}/contact`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(new FormData(form))) }); const result = await response.json(); if (!response.ok) throw new Error(result.error || 'No se pudo enviar.'); status.textContent = result.message; status.classList.add('success'); form.reset(); }
-  catch (error) { status.textContent = error.message || 'No pudimos enviar tu mensaje. Intenta por teléfono.'; status.classList.add('error'); }
-  finally { button.disabled = false; }
+startContentRefresh();
+window.addEventListener('focus', () => {
+  renderContent().catch(() => { /* no-op */ });
 });
-const chatPanel = document.querySelector('#chat-panel'), chatMessages = document.querySelector('#chat-messages'); let history = [];
-document.querySelector('#chat-toggle').addEventListener('click', () => { chatPanel.hidden = !chatPanel.hidden; if (!chatPanel.hidden) document.querySelector('#chat-input').focus(); });
+
+const nav = document.querySelector('.nav');
+const menuToggle = document.querySelector('.menu-toggle');
+menuToggle.addEventListener('click', () => {
+  const open = menuToggle.getAttribute('aria-expanded') !== 'true';
+  menuToggle.setAttribute('aria-expanded', String(open));
+  nav.classList.toggle('nav-open', open);
+});
+nav.addEventListener('click', (event) => {
+  if (event.target.closest('a')) {
+    nav.classList.remove('nav-open');
+    menuToggle.setAttribute('aria-expanded', 'false');
+  }
+});
+
+document.querySelector('#contact-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const status = document.querySelector('#form-status');
+  const button = form.querySelector('button');
+  button.disabled = true;
+  status.textContent = 'Enviando…';
+  status.className = 'form-status';
+  try {
+    const response = await fetch(`${API}/contact`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.fromEntries(new FormData(form)))
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'No se pudo enviar el mensaje.');
+    status.textContent = result.message;
+    status.classList.add('success');
+    form.reset();
+  } catch (error) {
+    status.textContent = error.message || 'No se pudo enviar el mensaje.';
+    status.classList.add('error');
+  } finally {
+    button.disabled = false;
+  }
+});
+
+const chatPanel = document.querySelector('#chat-panel');
+const chatMessages = document.querySelector('#chat-messages');
+let history = [];
+document.querySelector('#chat-toggle').addEventListener('click', () => {
+  chatPanel.hidden = !chatPanel.hidden;
+  if (!chatPanel.hidden) document.querySelector('#chat-input').focus();
+});
 document.querySelector('#chat-close').addEventListener('click', () => { chatPanel.hidden = true; });
 document.querySelector('#chat-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); const input = document.querySelector('#chat-input'), message = input.value.trim(); if (!message) return;
-  addBubble(message, 'user'); history.push({ role: 'user', content: message }); input.value = ''; const pending = addBubble('Estoy pensando…', 'bot pending');
-  try { const response = await fetch(`${API}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, history: history.slice(0, -1) }) }); const result = await response.json(); if (!response.ok) throw new Error(result.error); pending.textContent = result.reply; pending.classList.remove('pending'); history.push({ role: 'assistant', content: result.reply }); }
-  catch { pending.textContent = 'No pude responder ahora. Llámanos directamente para ayudarte.'; pending.classList.remove('pending'); }
+  event.preventDefault();
+  const input = document.querySelector('#chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+  addBubble(message, 'user');
+  history.push({ role: 'user', content: message });
+  input.value = '';
+  const pending = addBubble('Estoy pensando…', 'bot pending');
+  try {
+    const response = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history: history.slice(0, -1) })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'No se pudo responder.');
+    pending.textContent = result.reply;
+    pending.classList.remove('pending');
+    history.push({ role: 'assistant', content: result.reply });
+  } catch (error) {
+    pending.textContent = error.message || 'No se pudo responder en este momento.';
+    pending.classList.remove('pending');
+  }
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
-function addBubble(text, role) { const bubble = document.createElement('div'); bubble.className = `chat-bubble ${role}`; bubble.textContent = text; chatMessages.append(bubble); chatMessages.scrollTop = chatMessages.scrollHeight; return bubble; }
+
+function addBubble(text, role) {
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${role}`;
+  bubble.textContent = text;
+  chatMessages.append(bubble);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  return bubble;
+}

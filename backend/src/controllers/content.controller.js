@@ -1,20 +1,52 @@
-import { getClinicInfo, listPrices, listServices, listSpecialties } from '../models/content.model.js';
-import { demo } from '../data/demo.js';
+import { getCafeInfo, getSiteContent, listPrices, listServices, listSpecialties } from '../models/content.model.js';
 
-async function safe(read, fallback) {
-  try { return await read(); } catch (error) { console.warn(`Usando datos de demostración: ${error.message}`); return fallback; }
+async function respondWithDatabaseData(res, read, map = (data) => data) {
+  try {
+    const data = await read();
+    const result = map(data);
+    if (result === null) {
+      return res.status(503).json({ error: 'Falta información del negocio en la base de datos.' });
+    }
+    return res.json(result);
+  } catch (error) {
+    console.error(`Error al leer información de MySQL: ${error.message}`);
+    return res.status(503).json({ error: 'No se pudo leer la información de MySQL. Verifica XAMPP y la configuración de la base de datos.' });
+  }
 }
 
-export async function getHome(_req, res) { res.json(demo.home); }
-export async function getServices(_req, res) { res.json(await safe(listServices, demo.services)); }
-export async function getSpecialties(_req, res) { res.json(await safe(listSpecialties, demo.specialties)); }
-export async function getPrices(_req, res) { res.json(await safe(listPrices, demo.prices)); }
-export async function getAbout(_req, res) {
-  const rows = await safe(getClinicInfo, [demo.about]);
-  res.json(rows[0] || demo.about);
+export function getHome(_req, res) {
+  return respondWithDatabaseData(res, async () => {
+    const [[info], content] = await Promise.all([getCafeInfo(), getSiteContent()]);
+    if (!info || content.length === 0) return null;
+    return {
+      ...Object.fromEntries(content.map(({ content_key, content_value }) => [content_key, content_value])),
+      cafeName: info.name,
+      cafeTagline: info.tagline
+    };
+  });
 }
-export async function getContactInfo(_req, res) {
-  const rows = await safe(getClinicInfo, [demo.about]);
-  const { name, address, phone, email, hours, instagram } = rows[0] || demo.about;
-  res.json({ name, address, phone, email, hours, instagram });
+
+export function getServices(_req, res) {
+  return respondWithDatabaseData(res, listServices);
+}
+
+export function getSpecialties(_req, res) {
+  return respondWithDatabaseData(res, listSpecialties);
+}
+
+export function getPrices(_req, res) {
+  return respondWithDatabaseData(res, listPrices);
+}
+
+export function getAbout(_req, res) {
+  return respondWithDatabaseData(res, getCafeInfo, (rows) => rows[0] || null);
+}
+
+export function getContactInfo(_req, res) {
+  return respondWithDatabaseData(res, getCafeInfo, (rows) => {
+    const info = rows[0];
+    if (!info) return null;
+    const { name, address, phone, email, hours, instagram } = info;
+    return { name, address, phone, email, hours, instagram };
+  });
 }
